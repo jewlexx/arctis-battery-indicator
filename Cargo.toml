@@ -1,12 +1,12 @@
 [package]
+authors = ["Aaro Luomanen"]
+default-run = "arctis-battery-indicator-debug"
+description = "Program that displays a battery icon for the SteelSeries Arctis headset."
+edition = "2024"
+homepage = "https://github.com/aarol/"
+license = "MIT"
 name = "arctis-battery-indicator"
 version = "2.1.2"
-edition = "2024"
-authors = ["Aaro Luomanen"]
-description = "Program that displays a battery icon for the SteelSeries Arctis headset."
-license = "MIT"
-homepage = "https://github.com/aarol/"
-default-run = "arctis-battery-indicator-debug"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -26,9 +26,16 @@ toml = "0.8.21"
 tray-icon = "0.20.1"
 winit = "0.30.10"
 
-[build-dependencies]
+[target.'cfg(windows)'.build-dependencies]
 winres = "0.1"
 
+[target.'cfg(unix)'.dependencies]
+gtk = "0.18.2"
+image = { version = "0.25.6", default-features = false, features = ["ico"] }
+include_dir = "0.7.4"
+
+[build-dependencies]
+
 [profile.release]
-opt-level = "z"
 lto = true
+opt-level = "z"

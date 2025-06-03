@@ -1,12 +1,11 @@
-extern crate winres;
-
+#[cfg(windows)]
 fn main() {
     let mut res = winres::WindowsResource::new();
     res.set_icon("src/bat/main.ico");
 
     // register dark mode icons (10,20,...,50)
     (10..=50)
-    .step_by(10)
+        .step_by(10)
         // also register light mode icons (11,21,...,51)
         .chain((11..=51).step_by(10))
         .for_each(|d| {
@@ -15,3 +14,6 @@ fn main() {
 
     res.compile().unwrap();
 }
+
+#[cfg(not(windows))]
+fn main() {}

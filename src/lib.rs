@@ -3,18 +3,21 @@ mod headphone_models;
 mod hid;
 mod lang;
 
-use std::time::{Duration, Instant};
+#[cfg(unix)]
+mod unix;
+
 use lang::Key::*;
+use std::time::{Duration, Instant};
 
 use anyhow::Context;
-use config_file::{config_file_exists, ConfigFile};
+use config_file::{ConfigFile, config_file_exists};
 use headphone_models::KNOWN_HEADPHONES;
 use hid::{ChargingState, Headphone, HeadphoneModel};
 use hidapi::HidApi;
 use log::{debug, error, info};
 use tray_icon::{
-    menu::{Menu, MenuEvent, MenuItem},
     TrayIcon, TrayIconBuilder,
+    menu::{Menu, MenuEvent, MenuItem},
 };
 use winit::{
     application::ApplicationHandler,
@@ -36,7 +39,7 @@ struct AppState {
     menu_close: MenuItem,
 
     last_update: Instant,
-    should_update_icon: bool
+    should_update_icon: bool,
 }
 
 pub fn run() -> anyhow::Result<()> {
@@ -85,8 +88,7 @@ impl AppState {
             }
         };
 
-        let menu_version =
-            MenuItem::new(format!("{} v{}", lang::t(version), VERSION), false, None);
+        let menu_version = MenuItem::new(format!("{} v{}", lang::t(version), VERSION), false, None);
 
         let menu_logs = MenuItem::new(lang::t(view_logs), true, None);
         let menu_github = MenuItem::new(lang::t(view_updates), true, None);
@@ -99,6 +101,10 @@ impl AppState {
 
         let icon = Self::load_icon(Theme::Dark, 0, Some(ChargingState::Disconnected))
             .context("loading fallback disconnected icon")?;
+
+        // Minor fix on Unix systems to ensure GTK is initialized
+        #[cfg(unix)]
+        gtk::init()?;
 
         let tray_icon = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
@@ -166,7 +172,9 @@ impl AppState {
                             tooltip_text += " (Debug)";
                         }
 
-                        self.tray_icon.set_tooltip(Some(&tooltip_text)).with_context(|| format!("setting tooltip text: {tooltip_text}"))?;
+                        self.tray_icon
+                            .set_tooltip(Some(&tooltip_text))
+                            .with_context(|| format!("setting tooltip text: {tooltip_text}"))?;
 
                         let battery_percent = headphone.battery_percentage();
 
@@ -178,7 +186,7 @@ impl AppState {
                             Ok(icon) => self.tray_icon.set_icon(Some(icon))?,
                             Err(err) => error!("Failed to load icon: {err:?}"),
                         }
-                        
+
                         self.should_update_icon = false;
                     }
                 }
@@ -215,8 +223,23 @@ impl AppState {
             (level + 1) * 10 + theme_offset
         };
 
-        tray_icon::Icon::from_resource(res_id, None)
-            .with_context(|| format!("loading icon from resource {res_id}"))
+        #[cfg(windows)]
+        let icon = tray_icon::Icon::from_resource(res_id, None)
+            .with_context(|| format!("loading icon from resource {res_id}"))?;
+
+        #[cfg(not(windows))]
+        let icon = {
+            use image::EncodableLayout;
+
+            let image = unix::icons::ICONS
+                .with(|icons| icons.get_icon_image(res_id))
+                .context("loading icon image")?;
+
+            tray_icon::Icon::from_rgba(image.as_bytes().to_vec(), image.width(), image.height())
+                .with_context(|| format!("loading icon from file {res_id}"))?
+        };
+
+        Ok(icon)
     }
 }
 
