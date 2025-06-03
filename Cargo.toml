@@ -22,9 +22,9 @@ log = "0.4.22"
 serde = "1.0.219"
 simplelog = { version = "0.12.2", features = ["paris"] }
 sys-locale = "0.3.2"
-toml = "0.8.21"
+toml = "0.8.22"
 tray-icon = "0.20.1"
-winit = "0.30.10"
+winit = "0.30.11"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"
